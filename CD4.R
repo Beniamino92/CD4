@@ -146,5 +146,71 @@ lines(smooth.spline(times, precd4.coeff - 2*(stderr.precd4.coeff), df = 7),
 
 
 
+# Saving splined regression coefficient
 
+spline.intercept <- smooth.spline(times, intercepts.coeff, df = 7)$y
+spline.smoke <- smooth.spline(times, smoking.coeff, df = 7)$y
+spline.age <- smooth.spline(times, age.coeff, df = 7)$y
+spline.preCD4 <- smooth.spline(times, precd4.coeff, df = 7)$y
+
+# Creating matrix prediction for each variable, for each time step
+
+prediction.Y <- matrix(NA, nrow = length(n.ID), ncol = length(times))
+
+for(i in 1:length(n.ID)) {
+  for(t in 1:length(times)) {
+    prediction.Y[i, t] <- spline.intercept[t] + spline.smoke[t] * cd4$smoke[i] + 
+      spline.age[t] * cd4$age[i] + spline.preCD4[t] * cd4$precd4[i]
+  }
+}
+
+# Comparing real value and predicted values
+
+par(mfrow = c(1, 2))
+
+# Actual
+plot(cd4$visit[1:7], cd4$cd4[1:7], type = "l", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1)
+
+for(i in n.ID) {
+  temp <- subset(cd4, id == i)
+  lines(temp$visit, temp$cd4, type = "l")
+}
+
+# Predicted
+plot(times, prediction.Y[1, ], type = "l", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1)
+for(i in 2:length(n.ID)) {
+  lines(times, prediction.Y[i, ])
+}
+
+
+
+# Other visulisation of the same (overlapped on the same graph)
+
+par(mfrow = c(1, 1))
+
+plot(cd4$visit[1:7], cd4$cd4[1:7], type = "l", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1)
+
+for(i in n.ID) {
+  temp <- subset(cd4, id == i)
+  lines(temp$visit, temp$cd4, type = "l")
+}
+
+for(i in 2:length(n.ID)) {
+  lines(times, prediction.Y[i, ], col = "red", lwd = 2)
+}
 
