@@ -51,7 +51,7 @@ for(i in 1:length(times)) {
 # Creating different regressions for each time 
 models <- list()
 for(i in 1:length(times)) {
-  models[[i]] <- lm(X[[i]]$cd4 ~ X[[i]]$smoke + X[[i]]$age + X[[i]]$precd4 )
+  models[[i]] <- lm(X[[i]]$cd4 ~ X[[i]]$smoke + X[[i]]$age + X[[i]]$precd4)
 }
 
 
@@ -69,6 +69,23 @@ for(i in 1:length(times)) {
   precd4.coeff[i] <- models[[i]]$coefficients[4]
 }
 
+# Extracting standard errors
+
+stderr.intercepts.coeff <- c()
+stderr.smoking.coeff<- c()
+stderr.age.coeff <- c()
+stderr.precd4.coeff <- c()
+
+for(i in 1:length(times)) {
+  out <- summary(models[[i]])
+  stderr.intercepts.coeff[i] <- out$coefficients[1, 2]
+  stderr.smoking.coeff[i] <- out$coefficients[2, 2]
+  stderr.age.coeff[i] <- out$coefficients[3, 2]
+  stderr.precd4.coeff[i] <- out$coefficients[4, 2]
+}
+
+
+
 # Plotting coefficients varying over time
 
 par(mfrow = c(2, 2))
@@ -76,29 +93,57 @@ par(mfrow = c(2, 2))
 # bandwith
 band <- 1.5
 
+
+### INTERCEPT
 plot(times, intercepts.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Intercept Coefficient")
 lines(ksmooth(times, intercepts.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
 lines(smooth.spline(times, intercepts.coeff, df = 7), col = "green")
+# C.I
+lines(smooth.spline(times, intercepts.coeff + 2*(stderr.intercepts.coeff), df = 7), 
+      col = "grey", lty = 2 )
+lines(smooth.spline(times, intercepts.coeff - 2*(stderr.intercepts.coeff), df = 7), 
+      col = "grey", lty = 2 )
 
+
+### SMOKING COEFFICIENT
 plot(times, smoking.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Smoking Coefficient")
 lines(ksmooth(times, smoking.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
 lines(smooth.spline(times, smoking.coeff, df = 7), col = "green")
+# C.I
+lines(smooth.spline(times, smoking.coeff + 2*(stderr.smoking.coeff), df = 7), 
+      col = "grey", lty = 2 )
+lines(smooth.spline(times, smoking.coeff - 2*(stderr.smoking.coeff), df = 7), 
+      col = "grey", lty = 2 )
 
+# AGE COEFFICIENT
 plot(times, age.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Age Coefficient")
 lines(ksmooth(times, age.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
 lines(smooth.spline(times,  age.coeff, df = 7), col = "green")
+# C.I
+lines(smooth.spline(times, age.coeff + 2*(stderr.age.coeff), df = 7), 
+      col = "grey", lty = 2 )
+lines(smooth.spline(times, age.coeff - 2*(stderr.age.coeff), df = 7), 
+      col = "grey", lty = 2 )
 
+# PREC CD4
 plot(times, precd4.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "PreCD4 Coefficient")
 lines(ksmooth(times, precd4.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
 lines(smooth.spline(times, precd4.coeff, df = 7), col = "green")
+# C.I
+lines(smooth.spline(times, precd4.coeff + 2*(stderr.precd4.coeff), df = 7), 
+      col = "grey", lty = 2 )
+lines(smooth.spline(times, precd4.coeff - 2*(stderr.precd4.coeff), df = 7), 
+      col = "grey", lty = 2 )
+
+
 
 
 
