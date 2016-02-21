@@ -1,5 +1,7 @@
 install.packages("timereg")
+
 library("timereg")
+library("lattice")
 
 data(cd4)
 head(cd4)
@@ -35,6 +37,65 @@ for(i in n.ID) {
   temp <- subset(cd4, id == i)
   lines(temp$visit, temp$cd4, type = "o")
 }
+
+
+# Just a bit of exploratory data anlysis to check if smoking
+# has some impact:
+
+
+
+par(mfrow = c(1, 2))
+
+# Trajectories "Non-Smoker"
+plot(cd4$visit[1:7], cd4$cd4[1:7], type = "o", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1,
+     main = "Non-Smoker")
+
+for(i in n.ID) {
+  temp.non.smoker<- subset(cd4, id == i & smoke == 0)
+  lines(temp.non.smoker$visit, temp.non.smoker$cd4, type = "o")
+}
+
+# Trajectories "Smoker"
+plot(cd4$visit[29:33], cd4$cd4[29:33], type = "o", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1,
+     main = "Smoker"
+)
+
+for(i in n.ID) {
+  temp.smoker<- subset(cd4, id == i & smoke == 1)
+  lines(temp.smoker$visit, temp.smoker$cd4, type = "o")
+}
+
+
+
+# Let's also look at the box-plot
+par(mfrow = c(1, 1))
+boxplot(cd4 ~ smoke, data = cd4, col = "pink",
+        xlab = "Smoke", ylab = "CD4")
+
+
+# It doesn't look like there is a significant difference.
+# Let's do a t-test to check this.
+
+cd4.not.smokers <- subset(cd4, smoke == 0)
+cd4.smokers <- subset(cd4, smoke == 1)
+
+t.test(cd4.not.smokers, cd4.smokers) # p-value = 0.5271
+
+
+
+
+
+
 
 # Different times
 times <- sort(unique(cd4$visit))
@@ -91,19 +152,21 @@ for(i in 1:length(times)) {
 par(mfrow = c(2, 2))
 
 # bandwith
-band <- 1.5
+band <- 1.5 # for kernel smoothing
+df <- 2 # for splines
 
 
 ### INTERCEPT
 plot(times, intercepts.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Intercept Coefficient")
-lines(ksmooth(times, intercepts.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
-lines(smooth.spline(times, intercepts.coeff, df = 7), col = "green")
+lines(ksmooth(times, intercepts.coeff, "normal", bandwidth = band), 
+      col = "red", lwd = 2)
+lines(smooth.spline(times, intercepts.coeff, df = df), col = "green")
 # C.I
-lines(smooth.spline(times, intercepts.coeff + 2*(stderr.intercepts.coeff), df = 7), 
+lines(smooth.spline(times, intercepts.coeff + 2*(stderr.intercepts.coeff), df = df), 
       col = "grey", lty = 2 )
-lines(smooth.spline(times, intercepts.coeff - 2*(stderr.intercepts.coeff), df = 7), 
+lines(smooth.spline(times, intercepts.coeff - 2*(stderr.intercepts.coeff), df = df), 
       col = "grey", lty = 2 )
 
 
@@ -112,11 +175,11 @@ plot(times, smoking.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Smoking Coefficient")
 lines(ksmooth(times, smoking.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
-lines(smooth.spline(times, smoking.coeff, df = 7), col = "green")
+lines(smooth.spline(times, smoking.coeff, df = df), col = "green")
 # C.I
-lines(smooth.spline(times, smoking.coeff + 2*(stderr.smoking.coeff), df = 7), 
+lines(smooth.spline(times, smoking.coeff + 2*(stderr.smoking.coeff), df = df), 
       col = "grey", lty = 2 )
-lines(smooth.spline(times, smoking.coeff - 2*(stderr.smoking.coeff), df = 7), 
+lines(smooth.spline(times, smoking.coeff - 2*(stderr.smoking.coeff), df = df), 
       col = "grey", lty = 2 )
 
 # AGE COEFFICIENT
@@ -124,11 +187,11 @@ plot(times, age.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "Age Coefficient")
 lines(ksmooth(times, age.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
-lines(smooth.spline(times,  age.coeff, df = 7), col = "green")
+lines(smooth.spline(times,  age.coeff, df = df), col = "green")
 # C.I
-lines(smooth.spline(times, age.coeff + 2*(stderr.age.coeff), df = 7), 
+lines(smooth.spline(times, age.coeff + 2*(stderr.age.coeff), df = df), 
       col = "grey", lty = 2 )
-lines(smooth.spline(times, age.coeff - 2*(stderr.age.coeff), df = 7), 
+lines(smooth.spline(times, age.coeff - 2*(stderr.age.coeff), df = df), 
       col = "grey", lty = 2 )
 
 # PREC CD4
@@ -136,11 +199,11 @@ plot(times, precd4.coeff, pch = 19, col = "blue",
      xlab = "Time",
      ylab = "PreCD4 Coefficient")
 lines(ksmooth(times, precd4.coeff, "normal", bandwidth = band), col = "red", lwd = 2)
-lines(smooth.spline(times, precd4.coeff, df = 7), col = "green")
+lines(smooth.spline(times, precd4.coeff, df = df), col = "green")
 # C.I
-lines(smooth.spline(times, precd4.coeff + 2*(stderr.precd4.coeff), df = 7), 
+lines(smooth.spline(times, precd4.coeff + 2*(stderr.precd4.coeff), df = df), 
       col = "grey", lty = 2 )
-lines(smooth.spline(times, precd4.coeff - 2*(stderr.precd4.coeff), df = 7), 
+lines(smooth.spline(times, precd4.coeff - 2*(stderr.precd4.coeff), df = df), 
       col = "grey", lty = 2 )
 
 
@@ -148,10 +211,10 @@ lines(smooth.spline(times, precd4.coeff - 2*(stderr.precd4.coeff), df = 7),
 
 # Saving splined regression coefficient
 
-spline.intercept <- smooth.spline(times, intercepts.coeff, df = 7)$y
-spline.smoke <- smooth.spline(times, smoking.coeff, df = 7)$y
-spline.age <- smooth.spline(times, age.coeff, df = 7)$y
-spline.preCD4 <- smooth.spline(times, precd4.coeff, df = 7)$y
+spline.intercept <- smooth.spline(times, intercepts.coeff, df = df)$y
+spline.smoke <- smooth.spline(times, smoking.coeff, df = df)$y
+spline.age <- smooth.spline(times, age.coeff, df = df)$y
+spline.preCD4 <- smooth.spline(times, precd4.coeff, df = df)$y
 
 # Creating matrix prediction for each variable, for each time step
 
@@ -213,4 +276,42 @@ for(i in n.ID) {
 for(i in 2:length(n.ID)) {
   lines(times, prediction.Y[i, ], col = "red", lwd = 2)
 }
+
+
+
+
+
+
+# Plotting individual trajectories to have more knowledge about
+# what the fuck is going on in this fucking patients. My suggestion for them is
+# to use a condom and do not inject heroin with shared niddles.
+
+# ID: 1022 - 2334
+xyplot(cd4 ~ visit | factor(id), data=cd4[1:246, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 2385 - 3282
+xyplot(cd4 ~ visit | factor(id), data=cd4[247:443, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 3319 - 4096
+xyplot(cd4 ~ visit | factor(id), data=cd4[444:668, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 4103 - 4870
+xyplot(cd4 ~ visit | factor(id), data=cd4[669:852, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 4874 - 5856
+xyplot(cd4 ~ visit | factor(id), data=cd4[853:1009, ],
+       as.table=T, type = c("p", "l"))
+# ID: 5863 - 7079
+xyplot(cd4 ~ visit | factor(id), data=cd4[1010:1216, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 7143 - 7980
+xyplot(cd4 ~ visit | factor(id), data=cd4[1217:1405, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 7980 - 8893
+xyplot(cd4 ~ visit | factor(id), data=cd4[1406:1603, ],
+       as.table=T, type = c("p", "l"))
+# ID: 8942 - 9954
+xyplot(cd4 ~ visit | factor(id), data=cd4[1604:1809, ], 
+       as.table=T, type = c("p", "l"))
+
 
