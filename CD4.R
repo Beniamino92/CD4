@@ -415,8 +415,15 @@ xyplot(cd4 ~ visit | factor(id),
        data = cd4.selected, 
        as.table=T, type = c("p","l"), main = "Actual CD4")
 
-# Plotting residual trajectories CD$ for those individuals:
+# Plotting residual trajectories CD4 for those individuals:
 xyplot(residuals.cd4 ~ visit | factor(id), 
+       panel = function(...) {
+         panel.abline(h=0.5, lty = "dotted", col = "black")
+         panel.xyplot(...)
+       },
        data = cd4.selected, 
        as.table=T, type = c("p"), main = "Residuals CD4")
+
+
+
 
