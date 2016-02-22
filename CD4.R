@@ -153,7 +153,7 @@ par(mfrow = c(2, 2))
 
 # bandwith
 band <- 1.5 # for kernel smoothing
-df <- 2 # for splines
+df <- 6 # for splines
 
 
 ### INTERCEPT
@@ -314,4 +314,109 @@ xyplot(cd4 ~ visit | factor(id), data=cd4[1406:1603, ],
 xyplot(cd4 ~ visit | factor(id), data=cd4[1604:1809, ], 
        as.table=T, type = c("p", "l"))
 
+
+
+
+# I create a vector containg the predicted value for each observation
+# at the specific time point he has been recorded.
+
+# I need some auxiliary stuff (don't know if they are useful) but it works
+intercepts.coeff.map <- as.data.frame(matrix(cbind(times, intercepts.coeff),
+                                             nrow = length(times)))
+names(intercepts.coeff.map) <- c("t", "val")
+
+smoke.coeff.map <- as.data.frame(matrix(cbind(times, smoking.coeff),
+                                        nrow = length(times)))
+names(smoke.coeff.map) <- c("t", "val")
+
+age.coeff.map <- as.data.frame(matrix(cbind(times, age.coeff),
+                                      nrow = length(times)))
+
+names(age.coeff.map) <- c("t", "val")
+precd4.coeff.map <-  as.data.frame(matrix(cbind(times, precd4.coeff),
+                                          nrow = length(times)))
+names(precd4.coeff.map) <- c("t", "val")
+
+
+# I hold the prediction here:
+predicted.cd4 <- numeric(dim(cd4)[1])
+
+# Evaluating the prediction
+for(i in 1:length(predicted.cd4)) {
+  index <- which(intercepts.coeff.map$t == cd4$visit[i])
+  predicted.cd4[i] <- intercepts.coeff.map[index, 2] + 
+    smoke.coeff.map[index, 2] * cd4$smoke[i] + 
+    age.coeff.map[index, 2] * cd4$age[i] + 
+    precd4.coeff.map[index, 2] * cd4$precd4[i]
+}
+
+# Creating residuals
+residuals.cd4 <- cd4$cd4 - predicted.cd4
+
+# Adding these variable in the original dataset
+cd4 <- as.data.frame(cbind(cd4, predicted.cd4, residuals.cd4))
+head(cd4)
+
+# Now I'll plot the lattice of the residuals for each individuals:
+
+# ID: 1022 - 2334
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[1:246, ], 
+       as.table=T, type = c("p"))
+# ID: 2385 - 3282
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[247:443, ], 
+       as.table=T, type = c("p"))
+# ID: 3319 - 4096
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[444:668, ], 
+       as.table=T, type = c("p"))
+# ID: 4103 - 4870
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[669:852, ], 
+       as.table=T, type = c("p", "l"))
+# ID: 4874 - 5856
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[853:1009, ],
+       as.table=T, type = c("p"))
+# ID: 5863 - 7079
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[1010:1216, ], 
+       as.table=T, type = c("p"))
+# ID: 7143 - 7980
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[1217:1405, ], 
+       as.table=T, type = c("p"))
+# ID: 7980 - 8893
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[1406:1603, ],
+       as.table=T, type = c("p"))
+# ID: 8942 - 9954
+xyplot(residuals.cd4 ~ visit | factor(id), data=cd4[1604:1809, ], 
+       as.table=T, type = c("p"))
+
+
+
+
+
+# Now we look at some selected individuals:
+# I want to see their trajectories, and their relative residuals,
+# given by the model from the article.
+
+selected.individuals <- c(1235, 1397, 1752, 1829, 1857, 2074, 2114, 2835, 2843, 3250,
+                          3603, 3846, 4103, 4230, 4346, 4437, 
+                          4645, 5973, 6066, 6080, 6980, 7060, 7171, 7711, 
+                          7942, 8152, 8304, 8774, 9044, 9187, 9339)
+
+# I use an auxiliary dataset for the individual that I want to 
+# investigate
+
+cd4.selected <- subset(cd4, id == selected.individuals[1])
+
+for(i in 2:length(selected.individuals)) {
+  temp <- subset(cd4, id == selected.individuals[i])
+  cd4.selected <- as.data.frame(rbind(cd4.selected, temp))
+}
+
+# Plotting trajectories CD4 for those individuals:
+xyplot(cd4 ~ visit | factor(id), 
+       data = cd4.selected, 
+       as.table=T, type = c("p","l"), main = "Actual CD4")
+
+# Plotting residual trajectories CD$ for those individuals:
+xyplot(residuals.cd4 ~ visit | factor(id), 
+       data = cd4.selected, 
+       as.table=T, type = c("p"), main = "Residuals CD4")
 
