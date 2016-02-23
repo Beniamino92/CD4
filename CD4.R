@@ -1,5 +1,7 @@
-install.packages("timereg")
+# install.packages("timereg")
+# install.packages("nlme")
 
+library("nlme")
 library("timereg")
 library("lattice")
 
@@ -410,6 +412,8 @@ for(i in 2:length(selected.individuals)) {
   cd4.selected <- as.data.frame(rbind(cd4.selected, temp))
 }
 
+
+
 # Plotting trajectories CD4 for those individuals:
 xyplot(cd4 ~ visit | factor(id), 
        data = cd4.selected, 
@@ -423,6 +427,16 @@ xyplot(residuals.cd4 ~ visit | factor(id),
        },
        data = cd4.selected, 
        as.table=T, type = c("p"), main = "Residuals CD4")
+
+
+
+# QQ-plot of the residuals:
+qqnorm(cd4$residuals.cd4)
+
+
+
+
+
 
 
 
