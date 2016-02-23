@@ -1,6 +1,8 @@
 # install.packages("timereg")
 # install.packages("nlme")
+# install.packages("lme4")
 
+library("lme4")
 library("nlme")
 library("timereg")
 library("lattice")
@@ -434,6 +436,71 @@ xyplot(residuals.cd4 ~ visit | factor(id),
 qqnorm(cd4$residuals.cd4)
 
 
+
+# Using linera mixed models:
+
+
+
+# Random intercept per individuals
+mixed.model1 <- lmer(cd4 ~ visit + cd4.prev + (1|id), data = cd4,
+                     REML = FALSE)
+summary(mixed.model1)
+coef(mixed.model1)
+
+# Random intercept and random slope (for cd4.prev) per individual
+mixed.model2<- lmer(cd4 ~ visit + cd4.prev + (1 + cd4.prev|id),
+                    data = cd4, REML = FALSE)
+summary(mixed.model2)
+coef(mixed.model2)
+
+
+# Comparing these two models
+anova(mixed.model1, mixed.model2)
+
+# As result: strongly preference on mixed model2
+
+
+# NOTICE: I used REML = FALSE, just for model comparison,
+# the model I use, instead has to be REML = TRUE
+
+
+# FINAL MIXED MODEL (random intercept for id and random slope for cd4.prev|id)
+final.mixed.model <- lmer(cd4 ~ visit + cd4.prev + (1 + cd4.prev|id), data = cd4, 
+                          REML = TRUE)
+summary(final.mixed.model)
+coef(final.mixed.model)
+lmm.coeff <- fixed.effects(final.mixed.model)
+lmm.coeff
+
+# Intercept:  20.1158 
+# visit: -1.1369
+# cd4.prev: 0.3664
+
+
+# I wanna see what's the fit in the original data.
+
+# Plotting:
+
+plot(cd4$visit[1:7], cd4$cd4[1:7], type = "l", 
+     xlim = c(min(cd4$visit), 6),
+     ylim = c(min(cd4$cd4), 70),
+     xlab = "Time",
+     ylab = "CD4",
+     lwd = 1,
+     main = "Fitted LMM")
+
+for(i in n.ID) {
+  temp <- subset(cd4, id == i)
+  lines(temp$visit, temp$cd4, type = "l")
+}
+
+# For plotting the fit, I used the mean of cd4.prev of the individuals
+lines(times, lmm.coeff[1]  + lmm.coeff[2]*times + lmm.coeff[3] * mean(cd4$cd4.prev), lwd =4, 
+      col = "red" )
+
+
+# qqplot
+qqnorm(cd4$residuals.cd4)
 
 
 
