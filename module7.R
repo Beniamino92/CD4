@@ -78,13 +78,21 @@ find_betas <- function(X, tolerance = 0){
   return(list(times=times, betas=betas))
 }
 
-smoothed_fits <- function(betas, times, df = c(4,4,4,4)){
+smoothed_fits <- function(betas, times, df = c(4,4,4,4), cv = F){
   par(mfrow = c(2,2))
   betsm = list()
+  names = c('Intercept', 'Smoking', 'Age', 'PreCD4')
   for (i in 1:4){
-    plot(times, betas[,i])
-    spl <- smooth.spline(x = times, y = betas[,i],
-                         all.knots = T, df = df[i])
+    plot(times, betas[,i], ylab = paste(names[i], 'coefficient'))
+    if (cv){
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, cv=T)
+      print(paste('CV degrees of freedom: ', spl$df))
+    }
+    else {
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, df = df[i])
+    }
     betsm[[i]]<-predict(spl,1:59/10)$y
     lines(times, predict(spl,times)$y, col = 'red')  
   }
@@ -268,6 +276,14 @@ plot_gamma <- function(X, times, tolerance = 0, bandwidth = .25, caps = c(-100,1
   }
 }
 
+plot_robust_gamma <- function(X, times, tolerance = 0, bandwidth = .25, caps = c(-100,100), include_scatter = F, accuracies = c(0,2,4,6)){
+  par(mfrow = c(2,2))
+  for (i in 1:4){
+    plot_gamma(X, times, tolerance, bandwidth, caps, include_scatter, accuracies[i])
+  }
+  par(mfrow = c(1,1))
+}
+
 point_var <- function(covs, times){
   vars <- list()
   for (i in 1:4) vars[[i]] <- rep(0, length(times))
@@ -282,19 +298,46 @@ point_var <- function(covs, times){
   return(vars)
 }
 
-plot_with_CI <- function(betas, times, vars, df = c(4,4,4,4)){
+prep_CI_smooth <- function(times, vars){
+  if (any(is.na(vars))){
+    ind <- which(is.na(vars))
+    return( list(t = times[-ind], v = vars[-ind]))
+  }
+  else{
+    return(list(t = times, v = vars))
+  }
+}
+
+plot_with_CI <- function(betas, times, vars, df = c(4,4,4,4), cv = F, add_kernel = F){#
+  names = c('Intercept', 'Smoking', 'Age', 'PreCD4')
   par(mfrow = c(2,2))
   for (i in 1:4){
-    plot(times, betas[,i])
-    spl <- smooth.spline(x = times, y = betas[,i],
-                         all.knots = T, df = df[i])
+    plot(times, betas[,i], ylab = paste(names[i], 'coefficient'))
+    if (cv){
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, cv = T)
+    }
+    else {
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, df = df[i])
+      print(paste('CV degrees of freedom: ', spl$df))
+    }
     predictions <- predict(spl,times)$y
     lines(times, predictions, col = 'red')
     lines(times, predictions + 2 * sqrt(vars[[i]]))
     lines(times , predictions - 2 * sqrt(vars[[i]]))
+    temp <- prep_CI_smooth(times, 2 * sqrt(vars[[i]]))
+    smoothed_CI <- predict(smooth.spline(x = temp$t, y = temp$v, df = 3), times)$y
+    lines(times, predictions + smoothed_CI, lty = 2)
+    lines(times, predictions - smoothed_CI, lty = 2)
+    if (add_kernel){
+      lines(ksmooth(times, betas[,i],"normal", bandwidth = 1.5), col = 'green')
+    }
   }
   par(mfrow = c(1,1))
 }
+
+plot_with_CI(betas, times, vars, cv = T, add_kernel = T)
 
 subsample_indiv <- function(X){
   ids <- unique(X$id)
@@ -341,17 +384,43 @@ bootstrap_CI <- function(X, times.len, iter){
   return(list(low = betas_low, high = betas_high))
 }
 
-plot_boot_CI <- function(betas, times, boot_CI, df = c(4,4,4,4)){
+prep_boot_CI_smooth <- function(X, caps = c(-80,80)){
+  X[X < caps[1]] <- caps[1]
+  X[X> caps[2]] <- caps[2]
+  return (X)
+}
+
+plot_boot_CI <- function(betas, times, boot_CI, df = c(4,4,4,4), cv = F){
+  names = c('Intercept', 'Smoking', 'Age', 'PreCD4')
   par(mfrow = c(2,2))
   for (i in 1:4){
-    plot(times, betas[,i])
-    spl <- smooth.spline(x = times, y = betas[,i],
-                         all.knots = T, df = df[i])
+    plot(times, betas[,i], ylab = paste(names[i], 'coefficient'))
+    if (cv){
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, cv = T)
+    }
+    else {
+      spl <- smooth.spline(x = times, y = betas[,i],
+                           all.knots = T, df = df[i])
+    }
     predictions <- predict(spl,times)$y
     lines(times, predictions, col = 'red')
     
     lines(times, boot_CI$low[,i])
     lines(times , boot_CI$high[,i])
+    if (i == 3) caps = c(-10,10)
+    else if (i == 4) caps = c(-2, 2)
+    else caps = c(-80,80)
+    smoothed_CI_low <- predict(smooth.spline(x = times,
+                                             y = prep_boot_CI_smooth(boot_CI$low[,i], caps),
+                                             df = 3),
+                               times)$y
+    smoothed_CI_high <- predict(smooth.spline(x = times,
+                                              y = prep_boot_CI_smooth(boot_CI$high[,i], caps),
+                                              df = 3),
+                                times)$y
+    lines(times, smoothed_CI_low, lty = 2)
+    lines(times, smoothed_CI_high, lty = 2)
   }
   par(mfrow = c(1,1))
 }
@@ -373,30 +442,30 @@ calculate_resid <- function(data,betas){
   return(data.frame(resid = residuals, time=data$time))
 }
 
-concatenate_groups <- function(...){
-  kwargs <- list(...)
+concatenate_groups <- function(groups, lab){
   data <- matrix(NA, ncol = 1, nrow = 1)
   counter = 1
-  for (arg in kwargs){
-    arg$group <- counter
+  for (g in groups){
+    g$group <- lab[counter]
     counter <- counter + 1
-    if (is.na(data[1,1])) data <- arg
+    if (is.na(data[1,1])) data <- g
     else{
-      data <- rbind(data, arg)
+      data <- rbind(data, g)
     }
   }
   data <- as.data.frame(data)
+  #print(factor(data$group, levels = c('A', 'B')))
+  #data$group <- factor(data$group, levels = 1:(counter -1),labels = lab)
+  return(data)
 }
 
 plot_residuals <- function(X, betas, var_split="smoke"){
+  groups <- list()
   if (var_split == "smoke"){
-    dat1 <- split_var(X, function(x) return(x$smoke == 1))
-    dat2 <- split_var(X, function(x) return(x$smoke == 0))
-    group1 <- calculate_resid(dat1, betas)
-    group2 <- calculate_resid(dat2, betas)
-    final <- concatenate_groups(group1, group2)
-    p <- ggplot(final, aes(factor(time), resid))
-    p + geom_boxplot() + geom_jitter() + facet_grid(group ~.)
+    func <- list(function(x) return(x$smoke == 1),
+                 function(x) return(x$smoke == 0))
+    n <- 2
+    lab <- c('smokers', 'non-smokers')
   }
   else if (var_split == "age"){
     q <- quantile(unique(X$age), c(0.25, 0.5, 0.75))
@@ -404,17 +473,11 @@ plot_residuals <- function(X, betas, var_split="smoke"){
                  function(x) return(q[1] < x$age & x$age <= q[2]),
                  function(x) return(q[2] < x$age & x$age <= q[3]),
                  function(x) return(x$age > q[3]))
-    groups <- list()
-    for (i in 1:4){
-      temp <- split_var(X, func[[i]])
-      groups[[i]] <- calculate_resid(temp, betas)
-    }
-    final <- concatenate_groups(groups[[1]],
-                                groups[[2]],
-                                groups[[3]],
-                                groups[[4]])
-    p <- ggplot(final, aes(factor(time), resid))
-    p + geom_boxplot() + geom_jitter() + facet_grid(group ~.)
+    n <- 4
+    lab <- c(paste('age <=',round(q[1],2)),
+             paste(round(q[1],2),'< age <=',round(q[2],2)),
+             paste(round(q[2],2),'< age <=',round(q[3],2)),
+             paste(round(q[3],2), '< age'))
   }
   else if (var_split == "preCD4"){
     q <- quantile(unique(X$precd4), c(0.25, 0.5, 0.75))
@@ -422,39 +485,39 @@ plot_residuals <- function(X, betas, var_split="smoke"){
                  function(x) return(q[1] < x$precd4 & x$precd4 <= q[2]),
                  function(x) return(q[2] < x$precd4 & x$precd4 <= q[3]),
                  function(x) return(x$precd4 > q[3]))
-    groups <- list()
-    for (i in 1:4){
-      temp <- split_var(X, func[[i]])
-      groups[[i]] <- calculate_resid(temp, betas)
-    }
-    final <- concatenate_groups(groups[[1]],
-                                groups[[2]],
-                                groups[[3]],
-                                groups[[4]])
-    p <- ggplot(final, aes(factor(time), resid))
-    p + geom_boxplot() + geom_jitter() + facet_grid(group ~.)
+    n <- 4
+    lab <- c(paste('preCD4 <=',round(q[1],2)),
+             paste(round(q[1],2),'< preCD4 <=',round(q[2],2)),
+             paste(round(q[2],2),'< preCD4 <=',round(q[3],2)),
+             paste(round(q[3],2), '< preCD4'))
+    
   }
+  for (i in 1:n){
+    temp <- split_var(X, func[[i]])
+    groups[[i]] <- calculate_resid(temp, betas)
+  }
+  final <- concatenate_groups(groups, lab)
+  p <- ggplot(transform(final, group=factor(group,levels = lab)), aes(factor(time), resid))
+  p + geom_boxplot() + geom_jitter() + facet_grid(group ~.)
 }
-
-quantile(unique(X$age), c(0.25, 0.5, 0.75))
-
 
 X <- get_data(F)
 spaghetti_plot(X)
 temp <- find_betas(X, tolerance = 0)
 betas <- temp$betas
 gam <- gamma_matrix(X, times, 0)
-betas_smoothed <- smoothed_fits(betas, times, df = c(4,4,4,4))
+betas_smoothed <- smoothed_fits(betas, times, cv = T)
 covs <- cov_matrices(X, times, tolerance = 0)
 vars <- point_var(covs, times)
 plot_with_CI(betas, times, vars, df = c(4,4,4,4))
+plot_with_CI(betas, times, vars, cv = T)
 # next line might need to be run more than once, sometimes throws errors (depending on sampling)
 boot_CI <- bootstrap_CI(X,length(times), 100)
-plot_boot_CI(betas, times, boot_CI)
-plot_gamma(X, times, tolerance = 0, bandwidth = 10, caps = c(-1e5,1e5), include_scatter = T, accuracy = 8)
+plot_boot_CI(betas, times, boot_CI, cv = T)
+plot_gamma(X, times, tolerance = 0, bandwidth = 10, caps = c(-1e5,1e5), include_scatter = T, accuracy = 4)
+plot_robust_gamma(X, times, tolerance = 0, bandwidth = 10, caps = c(-1e5,1e5), include_scatter = T, accuracies = c(0,2,4,6))
 plot_covariances(X, times, tolerance = 0, bandwidth = 10, include_scatter = F)
 plot_residuals(X, betas_smoothed, "smoke")
 plot_residuals(X, betas_smoothed, "age")
 plot_residuals(X, betas_smoothed, "preCD4")
-
 
