@@ -286,9 +286,7 @@ for(i in 2:length(n.ID)) {
 
 
 
-# Plotting individual trajectories to have more knowledge about
-# what the fuck is going on in this fucking patients. My suggestion for them is
-# to use a condom and do not inject heroin with shared niddles.
+# Plotting individual trajectories to have more knowledge
 
 # ID: 1022 - 2334
 xyplot(cd4 ~ visit | factor(id), data=cd4[1:246, ], 
@@ -437,8 +435,16 @@ qqnorm(cd4$residuals.cd4)
 
 
 
-# Using linera mixed models:
 
+
+
+
+
+
+
+
+
+##### OTHER INVESTIGATIONS ######
 
 
 # Random intercept per individuals
