@@ -505,6 +505,7 @@ X <- get_data(F)
 spaghetti_plot(X)
 temp <- find_betas(X, tolerance = 0)
 betas <- temp$betas
+times <- temp$times
 gam <- gamma_matrix(X, times, 0)
 betas_smoothed <- smoothed_fits(betas, times, cv = T)
 covs <- cov_matrices(X, times, tolerance = 0)
